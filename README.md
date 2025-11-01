@@ -145,10 +145,7 @@ project-root/
 ├── README.md
 ├── app/
 │   ├── Dockerfile
-│   ├── .dockerignore
-│   ├── package.json
-│   └── src/
-│       └── index.js
+�~T~B   �~T~\�~T~@�ordpress
 ├── terraform/
 │   ├── main.tf
 │   ├── variables.tf
