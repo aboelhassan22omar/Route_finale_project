@@ -41,8 +41,8 @@
 
 ### 🎨 Visual Diagram
 **Pipeline Architecture Diagram** - Shows the complete flow from code commit through GitLab CI/CD stages to Kubernetes deployment, including the conditional rollback path.
-[[839f51fff172f34526806c7a00aaadc4_MD5.jpg|Open: Pasted image 20251101130944.png]]
-![[839f51fff172f34526806c7a00aaadc4_MD5.jpg]]
+![Uploading image.png…]()
+
 
 ## Key Features of the Project
 
