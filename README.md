@@ -47,7 +47,7 @@
 
 ## Key Features of the Project
 
-### âœ… Core Technologies
+###   Core Technologies
 1. **GitLab CI/CD** (replaces Jenkins)
 2. **AWS EKS** (managed Kubernetes cluster)
 3. **Terraform** (Infrastructure as Code)
@@ -55,7 +55,7 @@
 5. **Docker** (containerization)
 6. **Kubernetes** (orchestration)
 
-### âœ… Pipeline Stages
+###   Pipeline Stages
 
 1. **BUILD**: 
    - Build Docker image
@@ -95,7 +95,7 @@
    - **Automatic rollback** on test failure
    - Manual infrastructure destroy option
 
-### âœ… Key Capabilities
+###   Key Capabilities
 
 - âœ¨ **Zero-downtime deployments** (rolling updates)
 - ðŸ”„ **Automatic rollback** if tests fail
