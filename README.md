@@ -8,7 +8,7 @@
 
 ## What's Been Created
 
-### 📋 Complete Documentation Files
+###  Complete Documentation Files
 
 
 
@@ -39,7 +39,7 @@
 - Complete Terraform configurations (VPC, EKS, security groups)
 - Terraform variables and outputs
 
-### 🎨 Visual Diagram
+### ðŸŽ¨ Visual Diagram
 **Pipeline Architecture Diagram** - Shows the complete flow from code commit through GitLab CI/CD stages to Kubernetes deployment, including the conditional rollback path.
 <img width="1149" height="820" alt="image" src="https://github.com/user-attachments/assets/903587b7-ed0e-4e89-9be3-169a7fab7ae9" />
 
@@ -47,7 +47,7 @@
 
 ## Key Features of the Project
 
-### ✅ Core Technologies
+### âœ… Core Technologies
 1. **GitLab CI/CD** (replaces Jenkins)
 2. **AWS EKS** (managed Kubernetes cluster)
 3. **Terraform** (Infrastructure as Code)
@@ -55,7 +55,7 @@
 5. **Docker** (containerization)
 6. **Kubernetes** (orchestration)
 
-### ✅ Pipeline Stages
+### âœ… Pipeline Stages
 
 1. **BUILD**: 
    - Build Docker image
@@ -76,7 +76,7 @@
 
  
 4. **SONARQUBE**:
-   -  continuous code quality and code security.
+   - Â continuous code quality and code security.
 
 5. **TRIVEY**:
    -  utomatically detects and scans vulnerabilities
@@ -95,15 +95,15 @@
    - **Automatic rollback** on test failure
    - Manual infrastructure destroy option
 
-### ✅ Key Capabilities
+### âœ… Key Capabilities
 
-- ✨ **Zero-downtime deployments** (rolling updates)
-- 🔄 **Automatic rollback** if tests fail
-- 🛡️ **Security best practices** (non-root containers, secrets management)
-- 📊 **Auto-scaling** (HPA configuration included)
-- 🔍 **Comprehensive testing** (smoke tests, health checks)
-- 📈 **Resource management** (quotas, limits, requests)
-- 🌐 **LoadBalancer** provisioning for external access
+- âœ¨ **Zero-downtime deployments** (rolling updates)
+- ðŸ”„ **Automatic rollback** if tests fail
+- ðŸ›¡ï¸ **Security best practices** (non-root containers, secrets management)
+- ðŸ“Š **Auto-scaling** (HPA configuration included)
+- ðŸ” **Comprehensive testing** (smoke tests, health checks)
+- ðŸ“ˆ **Resource management** (quotas, limits, requests)
+- ðŸŒ **LoadBalancer** provisioning for external access
 
 ## Project Challenges & Options
 
@@ -140,33 +140,3 @@
 
 All files are ready to be pushed to GitHub with this structure:
 
-```
-project-root/
-├── .gitlab-ci.yml
-├── README.md
-├── app/
-│   ├── Dockerfile
-�~T~B   �~T~\�~T~@�ordpress
-├── terraform/
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   ├── backend.tf
-│   ├── eks.tf
-│   ├── vpc.tf
-│   └── security-groups.tf
-├── kubernetes/
-│   ├── deployment.yml
-│   ├── service.yml
-│   ├── namespace.yml
-│   ├── ingress.yml
-│   └── hpa.yml
-├── ansible/
-│   ├── playbook.yml
-│   └── inventory/
-│       └── hosts.yml
-└── scripts/
-    ├── smoke-test.sh
-    ├── health-check.sh
-    └── rollback.sh
-```
