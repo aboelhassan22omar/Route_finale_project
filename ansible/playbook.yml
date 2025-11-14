@@ -15,11 +15,32 @@
         - py3-pip
         - git
         - curl
+        - python3-dev
+        - libffi-dev
+        - openssl-dev
+        - gcc
+        - musl-dev
 
-    - name: Install Python Docker module
+    - name: Create virtual environment for Python packages
+      command:
+        cmd: python3 -m venv /opt/ansible-venv
+        creates: /opt/ansible-venv/bin/activate
+
+    - name: Install Python Docker module in virtual environment
       pip:
         name: docker
+        virtualenv: /opt/ansible-venv
+        virtualenv_python: python3
 
-    - name: Display success message
+    - name: Display CI/CD Configuration Success
       debug:
-        msg: "✅ Ansible configuration completed successfully on Alpine Linux"
+        msg: |
+          ✅ ANSIBLE CONFIGURATION COMPLETED!
+          ==================================
+          Build Server: {{ ansible_hostname }}
+          Docker: ✅ Installed
+          Docker Compose: ✅ Ready
+          Python Environment: ✅ Configured
+          Git: ✅ Available
+          
+          Next Stage: Deployment to Kubernetes
