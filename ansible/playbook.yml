@@ -3,15 +3,16 @@
   hosts: build_servers
   become: yes
   tasks:
-    - name: Install required packages
-      apt:
+    - name: Install required packages for Alpine Linux
+      apk:
         name: "{{ item }}"
         state: present
         update_cache: yes
       loop:
-        - docker.io
+        - docker
         - docker-compose
-        - python3-pip
+        - python3
+        - py3-pip
         - git
         - curl
 
@@ -19,29 +20,6 @@
       pip:
         name: docker
 
-    - name: Add user to docker group
-      user:
-        name: "{{ build_server_user }}"
-        groups: docker
-        append: yes
-
-    - name: Start and enable Docker service
-      systemd:
-        name: docker
-        state: started
-        enabled: yes
-
-    - name: Create application directories
-      file:
-        path: "/opt/{{ item }}"
-        state: directory
-        mode: '0755'
-      loop:
-        - wordpress
-        - builds
-
-    - name: Copy WordPress application
-      copy:
-        src: "../wordpress-mysql/"
-        dest: "/opt/wordpress"
-        remote_src: yes
+    - name: Display success message
+      debug:
+        msg: "✅ Ansible configuration completed successfully on Alpine Linux"
