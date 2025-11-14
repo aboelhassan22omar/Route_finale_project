@@ -65,6 +65,11 @@ deploy:
   script:
     - |
       echo "🚀 Deploying to Kubernetes..."
+      # تثبيت kubectl في هذه المرحلة
+      curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+      install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+      
+      # الآن نشر التطبيق
       kubectl apply -f kubernetes/namespace.yaml
       kubectl apply -f kubernetes/deployment.yaml
       kubectl apply -f kubernetes/service.yaml
@@ -73,7 +78,6 @@ deploy:
     name: production
   only:
     - main
-
 test:
   stage: test
   script:
