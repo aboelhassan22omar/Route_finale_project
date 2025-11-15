@@ -21,6 +21,8 @@ spec:
             secretKeyRef:
               name: mysql-secret
               key: mysql-root-password
+        - name: MYSQL_ROOT_HOST
+          value: "%"  # يسمح بالاتصال من أي pod داخل cluster
         ports:
         - containerPort: 3306
         volumeMounts:
