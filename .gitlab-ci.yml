@@ -1,14 +1,3 @@
-image: docker:latest
-
-services:
-  - docker:dind
-
-variables:
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: ""
-  CI_REGISTRY_IMAGE: $CI_REGISTRY_IMAGE
-
 stages:
   - build
   - infrastructure
@@ -17,85 +6,91 @@ stages:
   - test
   - cleanup
 
-before_script:
-  - apk add --no-cache curl git
+variables:
+  IMAGE_NAME: "dockerhub_username/routefinale"
+  IMAGE_TAG: "${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}"
+  KUBE_NAMESPACE: "routefinale"
+  ANSIBLE_INVENTORY: "ansible/inventory.ini"
+  GIT_BRANCH: "main"
 
+before_script:
+  - echo "Job: $CI_JOB_NAME | Stage: $CI_JOB_STAGE | Runner: $CI_RUNNER_DESCRIPTION"
+  - echo "Running on $(hostname) as $(whoami)"
+
+# ----------------- BUILD -----------------
 build:
   stage: build
   script:
-    - |
-      echo "🏗 Building Docker image..."
-      docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
-      docker build -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA" -f Dockerfile .
-      docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
-      echo "✅ Image built and pushed to registry"
+    - echo "🚀 Building Docker image ${IMAGE_TAG}"
+    - docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD"
+    - docker build -t "${IMAGE_TAG}" .
+    - docker push "${IMAGE_TAG}"
   only:
-    - main
+    - $GIT_BRANCH
 
+# ----------------- INFRASTRUCTURE (k3s single node) -----------------
 infrastructure:
   stage: infrastructure
   script:
-    - |
-      echo "🛠 Setting up CI/CD tools..."
-      curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-      install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-      echo "✅ kubectl installed and ready"
+    - echo "INFRA: ensure k3s presence"
+    - if command -v kubectl >/dev/null 2>&1; then echo "kubectl exists"; fi
+    - if kubectl get nodes >/dev/null 2>&1; then echo "k3s already installed"; else
+        echo "Installing k3s (single-node)...";
+        curl -sfL https://get.k3s.io | sh -s -;
+      fi
+    - echo "Ensure kubeconfig is readable"
+    - sudo chown $(whoami):$(whoami) /etc/rancher/k3s/k3s.yaml || true
+    - cp /etc/rancher/k3s/k3s.yaml ./kubeconfig || true
+    - chmod 600 ./kubeconfig || true
+  when: on_success
   only:
-    - main
+    - $GIT_BRANCH
 
+# ----------------- CONFIGURE -----------------
 configure:
   stage: configure
   script:
-    - |
-      echo "⚙️ Running Ansible configuration..."
-      apk add --no-cache python3 ansible
-      ansible-playbook -i ansible/inventory.ini ansible/playbook.yml -v
-      echo "✅ Ansible configuration completed"
+    - echo "CONFIGURE: setting up build server"
+    - if command -v ansible >/dev/null 2>&1; then echo "ansible already installed"; else
+        sudo apt-get update -y && sudo apt-get install -y python3-pip; sudo pip3 install ansible==7.9.0;
+      fi
+    - ansible-playbook -i "$ANSIBLE_INVENTORY" ansible/playbook.yml --tags configure
+    - if command -v gitlab-runner >/dev/null 2>&1; then echo "gitlab-runner exists"; else
+        curl -L --output /usr/local/bin/gitlab-runner https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-linux-amd64;
+        sudo chmod +x /usr/local/bin/gitlab-runner;
+        sudo useradd --comment 'GitLab Runner' --create-home gitlab-runner --shell /bin/bash || true;
+        sudo gitlab-runner install --user=gitlab-runner --working-directory=/home/gitlab-runner || true;
+        sudo gitlab-runner start || true;
+      fi
+    - sudo usermod -aG docker $(whoami) || true
+  when: on_success
   only:
-    - main
+    - $GIT_BRANCH
 
+# ----------------- DEPLOY -----------------
 deploy:
   stage: deploy
   script:
-    - |
-      echo "🚀 Kubernetes Deployment Stage"
-      echo "📋 Validating Kubernetes manifests..."
-      curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-      install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-      
-      # تحقق محلي فقط بدون محاولة الاتصال بالـ API Server
-      kubectl apply --dry-run=client -f kubernetes/
-      
-      echo "✅ All Kubernetes manifests are valid!"
-      echo "💡 Manual deployment command: kubectl apply -f kubernetes/"
-  environment:
-    name: production
+    - export KUBECONFIG=$PWD/kubeconfig
+    - ./scripts/deploy-local.sh
   only:
-    - main
-    
+    - $GIT_BRANCH
+
+# ----------------- TEST -----------------
 test:
   stage: test
   script:
-    - |
-      echo "🧪 Running tests..."
-      echo "✅ All pipeline stages completed successfully!"
-      echo "🎉 CI/CD Pipeline Status: COMPLETE"
-      echo "📊 Stages completed:"
-      echo "   ✅ build - Docker image built and pushed"
-      echo "   ✅ infrastructure - Tools installed"
-      echo "   ✅ configure - Ansible executed"
-      echo "   ✅ deploy - Kubernetes manifests validated"
-      echo "   ✅ test - Pipeline verification"
-      echo "   ⏳ cleanup - Manual stage ready"
+    - export KUBECONFIG=$PWD/kubeconfig
+    - ./scripts/test-local.sh
   only:
-    - main
+    - $GIT_BRANCH
 
+# ----------------- CLEANUP (manual) -----------------
 cleanup:
   stage: cleanup
   script:
-    - |
-      echo "🧹 Cleanup stage ready"
-      echo "This stage would clean up resources in a real environment"
+    - export KUBECONFIG=$PWD/kubeconfig
+    - echo "Manual cleanup: uncomment to delete namespace"
+    - echo "kubectl delete namespace $KUBE_NAMESPACE --wait=true"
   when: manual
-  only:
-    - main
+  allow_failure: true

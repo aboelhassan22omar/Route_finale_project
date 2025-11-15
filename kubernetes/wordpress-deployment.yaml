@@ -2,9 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wordpress
-  namespace: wordpress
+  namespace: routefinale
 spec:
-  replicas: 2
   selector:
     matchLabels:
       app: wordpress
@@ -15,15 +14,16 @@ spec:
     spec:
       containers:
       - name: wordpress
-        image: wordpress:latest
-        ports:
-        - containerPort: 80
+        image: wordpress:php8.1-apache
         env:
         - name: WORDPRESS_DB_HOST
-          value: "localhost"
+          value: mysql
         - name: WORDPRESS_DB_USER
-          value: "exampleuser"
+          value: root
         - name: WORDPRESS_DB_PASSWORD
-          value: "examplepass"
-        - name: WORDPRESS_DB_NAME
-          value: "exampledb"
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: mysql-root-password
+        ports:
+        - containerPort: 80
