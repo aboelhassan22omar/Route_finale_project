@@ -15,15 +15,22 @@ spec:
     spec:
       containers:
       - name: wordpress
-        image: wordpress:latest
+        image: wordpress:6.7.2-apache 
         ports:
         - containerPort: 80
         env:
         - name: WORDPRESS_DB_HOST
-          value: "localhost"
+          value: "mysql-service"  
         - name: WORDPRESS_DB_USER
-          value: "exampleuser"
+          value: "wordpress"
         - name: WORDPRESS_DB_PASSWORD
-          value: "examplepass"
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: password
         - name: WORDPRESS_DB_NAME
-          value: "exampledb"
+          value: "wordpress"
+        - name: WORDPRESS_CONFIG_EXTRA
+          value: |
+            define('WP_HOME', 'https://your-domain.com');
+            define('WP_SITEURL', 'https://your-domain.com');
