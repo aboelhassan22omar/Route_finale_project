@@ -63,15 +63,16 @@ deploy:
       curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
       install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
       
-      # التحقق من صحة الملفات بدون اتصال بالـ cluster
-      kubectl apply -f kubernetes/ --dry-run=client --validate=true
+      # تحقق محلي فقط بدون محاولة الاتصال بالـ API Server
+      kubectl apply --dry-run=client -f kubernetes/
+      
       echo "✅ All Kubernetes manifests are valid!"
       echo "💡 Manual deployment command: kubectl apply -f kubernetes/"
   environment:
     name: production
   only:
     - main
-
+    
 test:
   stage: test
   script:
