@@ -3,12 +3,9 @@ kind: Ingress
 metadata:
   name: wordpress-ingress
   namespace: wordpress
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   rules:
-  - host: "your-domain.com" 
-    http:
+  - http:
       paths:
       - path: /
         pathType: Prefix
