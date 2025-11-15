@@ -7,11 +7,10 @@ stages:
   - cleanup
 
 variables:
-  IMAGE_NAME: "dockerhub_username/routefinale"
   IMAGE_TAG: "${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}"
   KUBE_NAMESPACE: "routefinale"
-  ANSIBLE_INVENTORY: "ansible/inventory.ini"
   GIT_BRANCH: "main"
+  ANSIBLE_INVENTORY: "ansible/inventory.ini"
 
 before_script:
   - echo "Job: $CI_JOB_NAME | Stage: $CI_JOB_STAGE | Runner: $CI_RUNNER_DESCRIPTION"
@@ -21,76 +20,88 @@ before_script:
 build:
   stage: build
   script:
-    - echo "🚀 Building Docker image ${IMAGE_TAG}"
+    - echo "Ensure Docker is available"
+    - docker --version || (echo "docker missing: install Docker on runner host" && exit 2)
+    - echo "Logging into Docker Hub"
     - docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD"
+    - echo "Building image ${IMAGE_TAG}"
     - docker build -t "${IMAGE_TAG}" .
+    - echo "Pushing image to Docker Hub"
     - docker push "${IMAGE_TAG}"
   only:
-    - $GIT_BRANCH
+    - main
 
-# ----------------- INFRASTRUCTURE (k3s single node) -----------------
+# ----------------- INFRASTRUCTURE -----------------
 infrastructure:
   stage: infrastructure
   script:
-    - echo "INFRA: ensure k3s presence"
-    - if command -v kubectl >/dev/null 2>&1; then echo "kubectl exists"; fi
-    - if kubectl get nodes >/dev/null 2>&1; then echo "k3s already installed"; else
-        echo "Installing k3s (single-node)...";
+    - echo "Checking k3s and kubectl"
+    - if command -v kubectl >/dev/null 2>&1; then echo "kubectl exists"; else
         curl -sfL https://get.k3s.io | sh -s -;
       fi
-    - echo "Ensure kubeconfig is readable"
     - sudo chown $(whoami):$(whoami) /etc/rancher/k3s/k3s.yaml || true
-    - cp /etc/rancher/k3s/k3s.yaml ./kubeconfig || true
-    - chmod 600 ./kubeconfig || true
-  when: on_success
+    - cp /etc/rancher/k3s/k3s.yaml ./kubeconfig
+    - chmod 600 ./kubeconfig
+    - echo "DONE infra"
   only:
-    - $GIT_BRANCH
+    - main
 
 # ----------------- CONFIGURE -----------------
 configure:
   stage: configure
   script:
-    - echo "CONFIGURE: setting up build server"
-    - if command -v ansible >/dev/null 2>&1; then echo "ansible already installed"; else
-        sudo apt-get update -y && sudo apt-get install -y python3-pip; sudo pip3 install ansible==7.9.0;
-      fi
+    - echo "Ensuring Ansible is installed"
+    - if ! command -v ansible >/dev/null 2>&1; then sudo apt-get update -y && sudo apt-get install -y python3-pip && sudo pip3 install ansible==7.9.0; fi
+    - echo "Running Ansible configure tasks"
     - ansible-playbook -i "$ANSIBLE_INVENTORY" ansible/playbook.yml --tags configure
-    - if command -v gitlab-runner >/dev/null 2>&1; then echo "gitlab-runner exists"; else
-        curl -L --output /usr/local/bin/gitlab-runner https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-linux-amd64;
-        sudo chmod +x /usr/local/bin/gitlab-runner;
-        sudo useradd --comment 'GitLab Runner' --create-home gitlab-runner --shell /bin/bash || true;
-        sudo gitlab-runner install --user=gitlab-runner --working-directory=/home/gitlab-runner || true;
-        sudo gitlab-runner start || true;
-      fi
-    - sudo usermod -aG docker $(whoami) || true
-  when: on_success
   only:
-    - $GIT_BRANCH
+    - main
 
 # ----------------- DEPLOY -----------------
 deploy:
   stage: deploy
   script:
+    - echo "$KUBE_CONFIG" > kubeconfig
     - export KUBECONFIG=$PWD/kubeconfig
-    - ./scripts/deploy-local.sh
+    - kubectl apply -f kubernetes/namespace.yaml
+    - kubectl apply -f kubernetes/mysql-secret.yaml
+    - kubectl apply -f kubernetes/mysql-pvc.yaml
+    - kubectl apply -f kubernetes/mysql-pv.yaml
+    - kubectl apply -f kubernetes/mysql-deployment.yaml
+    - kubectl apply -f kubernetes/mysql-service.yaml
+    - kubectl apply -f kubernetes/phpmyadmin-deployment.yaml
+    - kubectl apply -f kubernetes/phpmyadmin-service.yaml
+    - kubectl apply -f kubernetes/wordpress-deployment.yaml
+    - kubectl apply -f kubernetes/wordpress-service.yaml
+    - kubectl apply -f kubernetes/ingress.yaml
+    - kubectl rollout status deployment/mysql --timeout=180s
+    - kubectl rollout status deployment/wordpress --timeout=180s
+    - kubectl rollout status deployment/phpmyadmin --timeout=180s
   only:
-    - $GIT_BRANCH
+    - main
 
 # ----------------- TEST -----------------
 test:
   stage: test
   script:
+    - echo "$KUBE_CONFIG" > kubeconfig
     - export KUBECONFIG=$PWD/kubeconfig
-    - ./scripts/test-local.sh
+    - echo "Listing pods"
+    - kubectl -n $KUBE_NAMESPACE get pods -o wide
+    - echo "Testing WordPress via NodePort"
+    - kubectl run --rm -i --tty curl-test-wordpress --image=curlimages/curl --restart=Never --command -- curl -sSf http://localhost:30080 || echo "WordPress test failed"
+    - echo "Testing phpMyAdmin via NodePort"
+    - kubectl run --rm -i --tty curl-test-pma --image=curlimages/curl --restart=Never --command -- curl -sSf http://localhost:30081 || echo "phpMyAdmin test failed"
   only:
-    - $GIT_BRANCH
+    - main
 
-# ----------------- CLEANUP (manual) -----------------
+# ----------------- CLEANUP -----------------
 cleanup:
   stage: cleanup
   script:
+    - echo "$KUBE_CONFIG" > kubeconfig
     - export KUBECONFIG=$PWD/kubeconfig
-    - echo "Manual cleanup: uncomment to delete namespace"
-    - echo "kubectl delete namespace $KUBE_NAMESPACE --wait=true"
+    - echo "Manual cleanup - delete namespace when uncommented"
+    #- kubectl delete namespace $KUBE_NAMESPACE --wait=true
   when: manual
   allow_failure: true
