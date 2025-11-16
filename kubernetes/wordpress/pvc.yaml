@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: mysql-pvc
-  namespace: routefinale
+  name: wordpress-pvc
+  namespace: route-finale
 spec:
   accessModes:
-    - ReadWriteOnce
+  - ReadWriteOnce
   storageClassName: local-path
   resources:
     requests:

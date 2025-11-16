@@ -7,101 +7,64 @@ stages:
   - cleanup
 
 variables:
-  IMAGE_TAG: "${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}"
-  KUBE_NAMESPACE: "routefinale"
-  GIT_BRANCH: "main"
-  ANSIBLE_INVENTORY: "ansible/inventory.ini"
+  DOCKERHUB_USER: "omar22aboelhassan"
+  # DOCKERHUB_PASS -> set as GitLab CI variable (masked)
+  KUBE_NAMESPACE: "route-finale"
 
 before_script:
-  - echo "Job: $CI_JOB_NAME | Stage: $CI_JOB_STAGE | Runner: $CI_RUNNER_DESCRIPTION"
-  - echo "Running on $(hostname) as $(whoami)"
+  - echo "CI start"
 
-# ----------------- BUILD -----------------
 build:
   stage: build
+  image: docker:24
+  services:
+    - docker:dind
   script:
-    - echo "Ensure Docker is available"
-    - docker --version || (echo "docker missing: install Docker on runner host" && exit 2)
-    - echo "Logging into Docker Hub"
-    - docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD"
-    - echo "Building image ${IMAGE_TAG}"
-    - docker build -t "${IMAGE_TAG}" .
-    - echo "Pushing image to Docker Hub"
-    - docker push "${IMAGE_TAG}"
-  only:
-    - main
+    - docker info
+    - bash scripts/build_and_tag.sh
+  tags: ["local-runner"]
 
-# ----------------- INFRASTRUCTURE -----------------
 infrastructure:
   stage: infrastructure
+  image: bitnami/kubectl:latest
   script:
-    - echo "Checking k3s and kubectl"
-    - if command -v kubectl >/dev/null 2>&1; then echo "kubectl exists"; else
-        curl -sfL https://get.k3s.io | sh -s -;
-      fi
-    - sudo chown $(whoami):$(whoami) /etc/rancher/k3s/k3s.yaml || true
-    - cp /etc/rancher/k3s/k3s.yaml ./kubeconfig
-    - chmod 600 ./kubeconfig
-    - echo "DONE infra"
-  only:
-    - main
+    - kubectl apply -f kubernetes/namespace.yaml
+  tags: ["local-runner"]
 
-# ----------------- CONFIGURE -----------------
 configure:
   stage: configure
+  image: bitnami/kubectl:latest
   script:
-    - echo "Ensuring Ansible is installed"
-    - if ! command -v ansible >/dev/null 2>&1; then sudo apt-get update -y && sudo apt-get install -y python3-pip && sudo pip3 install ansible==7.9.0; fi
-    - echo "Running Ansible configure tasks"
-    - ansible-playbook -i "$ANSIBLE_INVENTORY" ansible/playbook.yml --tags configure
-  only:
-    - main
+    - |
+      kubectl -n ${KUBE_NAMESPACE} delete secret mysql-secret --ignore-not-found=true
+      kubectl -n ${KUBE_NAMESPACE} create secret generic mysql-secret \
+        --from-literal=mysql-root-password="${MYSQL_ROOT_PASSWORD}" \
+        --from-literal=mysql-user="${MYSQL_USER}" \
+        --from-literal=mysql-password="${MYSQL_PASSWORD}" \
+        --from-literal=mysql-database="${MYSQL_DATABASE}"
+  tags: ["local-runner"]
 
-# ----------------- DEPLOY -----------------
 deploy:
   stage: deploy
+  image: bitnami/kubectl:latest
   script:
-    - echo "$KUBE_CONFIG" > kubeconfig
-    - export KUBECONFIG=$PWD/kubeconfig
-    - kubectl apply -f kubernetes/namespace.yaml
-    - kubectl apply -f kubernetes/mysql-secret.yaml
-    - kubectl apply -f kubernetes/mysql-pvc.yaml
-    - kubectl apply -f kubernetes/mysql-pv.yaml
-    - kubectl apply -f kubernetes/mysql-deployment.yaml
-    - kubectl apply -f kubernetes/mysql-service.yaml
-    - kubectl apply -f kubernetes/phpmyadmin-deployment.yaml
-    - kubectl apply -f kubernetes/phpmyadmin-service.yaml
-    - kubectl apply -f kubernetes/wordpress-deployment.yaml
-    - kubectl apply -f kubernetes/wordpress-service.yaml
-    - kubectl apply -f kubernetes/ingress.yaml
-    - kubectl rollout status deployment/mysql --timeout=180s
-    - kubectl rollout status deployment/wordpress --timeout=180s
-    - kubectl rollout status deployment/phpmyadmin --timeout=180s
-  only:
-    - main
+    - bash scripts/deploy_k8s.sh
+  environment:
+    name: production
+  tags: ["local-runner"]
 
-# ----------------- TEST -----------------
 test:
   stage: test
+  image: bitnami/kubectl:latest
   script:
-    - echo "$KUBE_CONFIG" > kubeconfig
-    - export KUBECONFIG=$PWD/kubeconfig
-    - echo "Listing pods"
-    - kubectl -n $KUBE_NAMESPACE get pods -o wide
-    - echo "Testing WordPress via NodePort"
-    - kubectl run --rm -i --tty curl-test-wordpress --image=curlimages/curl --restart=Never --command -- curl -sSf http://localhost:30080 || echo "WordPress test failed"
-    - echo "Testing phpMyAdmin via NodePort"
-    - kubectl run --rm -i --tty curl-test-pma --image=curlimages/curl --restart=Never --command -- curl -sSf http://localhost:30081 || echo "phpMyAdmin test failed"
-  only:
-    - main
+    - kubectl -n ${KUBE_NAMESPACE} get pods
+    - kubectl -n ${KUBE_NAMESPACE} get svc
+  tags: ["local-runner"]
 
-# ----------------- CLEANUP -----------------
 cleanup:
   stage: cleanup
-  script:
-    - echo "$KUBE_CONFIG" > kubeconfig
-    - export KUBECONFIG=$PWD/kubeconfig
-    - echo "Manual cleanup - delete namespace when uncommented"
-    #- kubectl delete namespace $KUBE_NAMESPACE --wait=true
   when: manual
-  allow_failure: true
+  image: bitnami/kubectl:latest
+  script:
+    - bash scripts/cleanup.sh
+  tags: ["local-runner"]

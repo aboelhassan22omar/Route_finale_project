@@ -1,0 +1,21 @@
+---
+- name: Deploy k8s manifests to local cluster
+  hosts: local
+  become: false
+  tasks:
+    - name: Apply namespace
+      command: kubectl apply -f kubernetes/namespace.yaml
+      args:
+        chdir: "{{ playbook_dir }}/../../"
+    - name: Apply MySQL manifests
+      command: kubectl apply -k kubernetes/mysql
+      args:
+        chdir: "{{ playbook_dir }}/../../"
+    - name: Apply WordPress manifests
+      command: kubectl apply -k kubernetes/wordpress
+      args:
+        chdir: "{{ playbook_dir }}/../../"
+    - name: Apply ingress
+      command: kubectl apply -f kubernetes/ingress.yaml
+      args:
+        chdir: "{{ playbook_dir }}/../../"

@@ -1,8 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: project-ingress
-  namespace: routefinale
+  name: wordpress-ingress
+  namespace: route-finale
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
@@ -15,15 +15,5 @@ spec:
         backend:
           service:
             name: wordpress
-            port:
-              number: 80
-  - host: pma.local
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: phpmyadmin
             port:
               number: 80

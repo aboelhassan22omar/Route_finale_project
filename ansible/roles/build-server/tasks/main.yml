@@ -1,18 +1,54 @@
 ---
-- name: Ensure build directories exist
-  file:
-    path: "/tmp/builds/{{ item }}"
-    state: directory
-    mode: '0755'
-  loop:
-    - wordpress
-    - temp
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
 
-- name: Copy build scripts
-  copy:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
+- name: Install required packages
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - software-properties-common
+    state: present
+
+- name: Install Docker GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker repo
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+    state: present
+
+- name: Install docker-ce
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+    update_cache: yes
+
+- name: Ensure docker service running
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Install kubectl
+  get_url:
+    url: "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
     mode: '0755'
-  loop:
-    - { src: "../../../scripts/deploy.sh", dest: "/tmp/builds/deploy.sh" }
-    - { src: "../../../scripts/test.sh", dest: "/tmp/builds/test.sh" }
+  args:
+    warn: false
+
+- name: Install gitlab-runner (deb script)
+  shell: curl -L https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh | sudo bash && apt-get install -y gitlab-runner
+  args:
+    warn: false

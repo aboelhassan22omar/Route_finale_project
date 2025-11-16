@@ -1,0 +1,6 @@
+---
+- name: Provision build server (local VM)
+  hosts: buildservers
+  become: true
+  roles:
+    - build-server

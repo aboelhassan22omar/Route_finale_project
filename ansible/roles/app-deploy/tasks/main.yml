@@ -1,0 +1,5 @@
+---
+- name: Apply all k8s resources from repo
+  command: kubectl apply -k ../../kubernetes/
+  args:
+    chdir: "{{ playbook_dir }}/../../"
