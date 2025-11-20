@@ -44,7 +44,7 @@ This project provides:
 - Cleanup
 
 <p align="center">
-<img src="images/Screenshot 2025-11-17 021918.png" alt="Pipeline Output" width="800"/>
+<img src="images/Screenshot 2025-11-20 185810.png" alt="Pipeline Output" width="800"/>
 </p>
 
 ### ✅ Kubernetes Deployment
@@ -77,31 +77,31 @@ This project provides:
 
 ```
 Route_finale_project/
-├── ansible/              # Full provisioning & deployment automation
-│   ├── ansible.cfg
-│   ├── inventory.ini
-│   └── playbooks/
-│       ├── deploy-app.yml
-│       └── provision-build-server.yml
+├── ansible/ # Full provisioning & deployment automation
+│ ├── ansible.cfg
+│ ├── inventory.ini
+│ └── playbooks/
+│ ├── deploy-app.yml
+│ └── provision-build-server.yml
 │
-├── docker/               # Custom Docker images
-│   ├── mysql/
-│   ├── nginx/
-│   └── wordpress/
+├── docker/ # Custom Docker images
+│ ├── mysql/
+│ ├── nginx/
+│ └── wordpress/
 │
-├── kubernetes/          # K8s deployment manifests (WordPress + MySQL)
-│   ├── namespace.yaml
-│   ├── ingress.yaml
-│   ├── wordpress/
-│   └── mysql/
+├── kubernetes/ # K8s deployment manifests (WordPress + MySQL)
+│ ├── namespace.yaml
+│ ├── ingress.yaml
+│ ├── wordpress/
+│ └── mysql/
 │
-├── scripts/             # Automated Bash scripts
-│   ├── build_and_tag.sh
-│   ├── push_images.sh
-│   ├── deploy_k8s.sh
-│   └── cleanup.sh
+├── scripts/ # Automated Bash scripts
+│ ├── build_and_tag.sh
+│ ├── push_images.sh
+│ ├── deploy_k8s.sh
+│ └── cleanup.sh
 │
-└── wordpress-mysql/     # Local Docker Compose setup
+└── wordpress-mysql/ # Local Docker Compose setup
 ```
 
 ---
